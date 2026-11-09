@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>TikTok 3D Printer Live</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #3d2616;
+    background-image: repeating-linear-gradient(90deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 2px, transparent 2px, transparent 10px);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .machine-top {
+    width: 100%;
+    max-width: 500px;
+    height: 38px;
+    background: linear-gradient(to bottom, #111, #2a2a2a);
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    color: #fff;
+    font-size: 12px;
+    opacity: 0.15;
+    transition: opacity 0.3s;
+  }
+  .machine-top:hover { opacity: 1; }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ff4444;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .status-dot.online { background: #00e676; box-shadow: 0 0 8px #00e676; }
+  
+  /* ضبط عرض الورقة ليناسب شاشة الموبايل فقط */
+  .paper-wrapper {
+    position: relative;
+    width: 92%;
+    max-width: 440px;
+    height: calc(100vh - 50px);
+    background: #fcfaf2;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 0 25px rgba(0,0,0,0.05);
+    border-radius: 0 0 12px 12px;
+    padding: 18px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: center;
+    gap: 14px;
+    overflow: hidden;
+    transition: transform 0.9s cubic-bezier(0.45, 0, 0.55, 1), opacity 0.6s ease;
+  }
+  .paper-wrapper.new-sheet {
+    transform: translateY(110vh);
+    opacity: 0;
+  }
+
+  .gantry-bar {
+    position: absolute;
+    width: 96%;
+    max-width: 480px;
+    height: 12px;
+    background: linear-gradient(to bottom, #d0d0d0, #777, #d0d0d0);
+    top: 60px;
+    z-index: 25;
+    box-shadow: 0 5px 12px rgba(0,0,0,0.5);
+    transition: top 0.35s ease;
+    pointer-events: none;
+  }
+  .print-head {
+    position: absolute;
+    width: 40px;
+    height: 30px;
+    background: #1a1a1a;
+    border: 2px solid #555;
+    top: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 5px;
+    transition: left 0.35s ease;
+  }
+  .print-head.active::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 7px;
+    height: 15px;
+    background: #ff0044;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #ff0044, 0 0 20px #ff7700;
+  }
+
+  .printed-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #fff;
+    border: 2.5px solid #222;
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    position: relative;
+  }
+  .avatar-box {
+    overflow: hidden;
+    border-radius: 50%;
+    border: 3px solid #111;
+    position: relative;
+  }
+  .avatar-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    clip-path: inset(0 0 100% 0);
+    animation: printScan 1.6s linear forwards;
+  }
+  @keyframes printScan {
+    0% { clip-path: inset(0 0 100% 0); filter: sepia(0.5) contrast(1.2); }
+    100% { clip-path: inset(0 0 0% 0); filter: none; }
+  }
+  .user-name {
+    margin-top: 6px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #111;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+  }
+
+  /* أحجام مكبرة لتناسب شاشة التليفون */
+  .size-small { width: 125px; }
+  .size-small .avatar-box { width: 95px; height: 95px; }
+
+  .size-medium { width: 175px; border-color: #d97706; background: #fffbeb; }
+  .size-medium .avatar-box { width: 140px; height: 140px; border-color: #d97706; }
+  .size-medium .user-name { font-size: 17px; color: #b45309; }
+
+  .size-large { width: 250px; border: 3.5px solid #dc2626; background: #fef2f2; }
+  .size-large .avatar-box { width: 200px; height: 200px; border-color: #dc2626; }
+  .size-large .user-name { font-size: 20px; color: #991b1b; }
+
+  .test-btn {
+    background: #333; color: #fff; border: 1px solid #666;
+    padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 10px;
+  }
+  .test-btn:hover { background: #555; }
+</style>
+</head>
+<body>
+
+  <div class="machine-top">
+    <div><span id="statusDot" class="status-dot"></span><span id="statusText">جاري الاتصال...</span></div>
+    <div>
+      <button class="test-btn" onclick="testGift(1)">وردة (صغير)</button>
+      <button class="test-btn" onclick="testGift(30)">دونات (وسط)</button>
+      <button class="test-btn" onclick="testGift(500)">مجرة (كبير)</button>
+    </div>
+  </div>
+
+  <div class="gantry-bar" id="gantry">
+    <div class="print-head" id="head"></div>
+  </div>
+
+  <div class="paper-wrapper" id="paper"></div>
+
+<script>
+  const paper = document.getElementById('paper');
+  const gantry = document.getElementById('gantry');
+  const head = document.getElementById('head');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+
+  let printQueue = [];
+  let isPrinting = false;
+
+  // تحديد الحد الأقصى لعدد الصور في الورقة الواحدة (6 صور كحد أقصى)
+  const MAX_ITEMS_PER_PAGE = 6;
+
+  function enqueuePrint(user, avatar, coins, priority) {
+    const item = { user, avatar, coins };
+    if (priority) {
+      printQueue.unshift(item);
+    } else {
+      printQueue.push(item);
+    }
+    processQueue();
+  }
+
+  async function processQueue() {
+    if (isPrinting || printQueue.length === 0) return;
+    isPrinting = true;
+
+    const current = printQueue.shift();
+    let sizeClass = 'size-small';
+    if (current.coins >= 100) {
+      sizeClass = 'size-large';
+    } else if (current.coins >= 20) {
+      sizeClass = 'size-medium';
+    }
+
+    // لو العدد وصل 6 صور نقلب الصفحة فوراً
+    if (paper.children.length >= MAX_ITEMS_PER_PAGE) {
+      await changePaperSheet();
+    }
+
+    const card = document.createElement('div');
+    card.className = `printed-item ${sizeClass}`;
+    card.innerHTML = `
+      <div class="avatar-box">
+        <img src="${current.avatar}" onerror="this.src='https://placehold.co/200x200?text=VIP'">
+      </div>
+      <div class="user-name">${current.user}</div>
+    `;
+    paper.appendChild(card);
+
+    // فحص إذا الورقة اتملت بالطول بسبب الصور الكبيرة
+    const paperRect = paper.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+
+    if (cardRect.bottom > paperRect.bottom - 15 && paper.children.length > 1) {
+      paper.removeChild(card);
+      await changePaperSheet();
+      paper.appendChild(card);
+    }
+
+    // تحريك ذراع الليزر لمكان الصورة بالظبط
+    const gantryRect = gantry.getBoundingClientRect();
+    const newRect = card.getBoundingClientRect();
+    gantry.style.top = (newRect.top + newRect.height / 2) + 'px';
+    head.style.left = (newRect.left - gantryRect.left + newRect.width / 2) + 'px';
+    head.classList.add('active');
+
+    await new Promise(r => setTimeout(r, 1650));
+    head.classList.remove('active');
+
+    isPrinting = false;
+    processQueue();
+  }
+
+  async function changePaperSheet() {
+    paper.classList.add('new-sheet');
+    await new Promise(r => setTimeout(r, 900));
+    paper.innerHTML = '';
+    paper.classList.remove('new-sheet');
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  function connectTikFinity() {
+    const ws = new WebSocket('ws://localhost:21213/');
+    ws.onopen = () => {
+      statusDot.classList.add('online');
+      statusText.innerText = 'متصل بالبث';
+    };
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.event === 'gift') {
+          const d = msg.data;
+          if (d.giftType === 1 && !d.repeatEnd) return;
+          const totalCoins = (d.diamondCount || 1) * (d.repeatCount || 1);
+          const isPriority = totalCoins >= 20;
+          enqueuePrint(d.nickname || d.uniqueId, d.profilePictureUrl, totalCoins, isPriority);
+        }
+      } catch (e) {}
+    };
+    ws.onclose = () => {
+      statusDot.classList.remove('online');
+      statusText.innerText = 'غير متصل';
+      setTimeout(connectTikFinity, 3000);
+    };
+  }
+
+  connectTikFinity();
+
+  function testGift(coins) {
+    const names = ['أحمد', 'سارة', 'محمد', 'كودوشة', 'Tnine9', 'Löwe'];
+    const randomName = names[Math.floor(Math.random() * names.length)];
+    const randomImg = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`;
+    enqueuePrint(randomName, randomImg, coins, coins >= 20);
+  }
+</script>
+</body>
+</html>
